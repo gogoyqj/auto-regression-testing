@@ -1,0 +1,11 @@
+hosts:
+ beta:
+  # beta
+  - 127.0.0.1 *.aaa.com,aaa.com
+ dev:
+  # dev
+  - 127.0.0.1 *.aaa.com,aaa.com
+urls:
+ - 目录页 http://aaa.com/qreactGitHub/examples/
+ - 首页 http://aaa.com/qreactGitHub/examples/index.html
+isMobile: true

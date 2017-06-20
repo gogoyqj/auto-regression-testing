@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>auto regression</title>
+        <style type="text/css">
+            html, body, div, p, img, h5 {
+                margin: 0;
+                padding: 0;
+                font-size: 14px;
+                border: none;
+                color: green;
+            }
+            img {
+                width: 100%;
+            }
+            h5 {
+                line-height: 150%;
+            }
+            p.warning {
+                color: #f14e32;
+                line-height: 150%;
+                text-align: center;
+            }
+            a, a:hover, a:link {
+                text-decoration: none;
+                color: green;
+            }
+            textarea {
+                width: 100%;
+                margin-bottom: 20px;
+            }
+            .screenshot-item {
+                display: inline-block;
+                float: left;
+                width: 400px;
+            }
+        </style>
+    </head>
+    <body>
+    </body>
+    <script>
+        var screenshots = /*screenshots*/;
+        var html = '<p>Hosts 配置</p><textarea>' + screenshots.hosts + '</textarea>';
+        screenshots = screenshots.screenshots;
+        if (screenshots instanceof Array) {
+            screenshots.forEach(function(item) {
+                html += '<div class="screenshot-item">';
+                html += '<p><a target="_blank" href="' + item.url.url + '">' + item.url.url + '</a> ' + item.url.name + '</p>';
+                html += '<img src="data:image/png;base64,' + item.screenshot.value + '"/>'
+                html += '</div>';
+            }, this);
+        } else {
+            html = '<p class="warning">no screenshots taken</p>';
+        }
+        document.body.innerHTML = html;
+    </script>
+</html>
