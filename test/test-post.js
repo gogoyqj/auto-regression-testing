@@ -14,6 +14,7 @@ isMobile: true
 postJson(url, {
         type: 'yaml',
         isMobile: true,
+        deploy_type: 'beta',
         data: encodeURIComponent(body)
     }, function (err, result) {
         if (err) {
@@ -21,5 +22,5 @@ postJson(url, {
             process.exit(500);
         }
         var body = result.body;
-        console.log(body);
+        console.log(JSON.parse(body).html);
     });

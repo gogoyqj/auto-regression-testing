@@ -38,21 +38,6 @@
         </style>
     </head>
     <body>
+        <!--html-->
     </body>
-    <script>
-        var screenshots = /*screenshots*/;
-        var html = '<p>Hosts 配置</p><textarea>' + screenshots.hosts + '</textarea>';
-        screenshots = screenshots.screenshots;
-        if (screenshots instanceof Array) {
-            screenshots.forEach(function(item) {
-                html += '<div class="screenshot-item">';
-                html += '<p><a target="_blank" href="' + item.url.url + '">' + item.url.url + '</a> ' + item.url.name + '</p>';
-                html += '<img src="data:image/png;base64,' + item.screenshot.value + '"/>'
-                html += '</div>';
-            }, this);
-        } else {
-            html = '<p class="warning">no screenshots taken</p>';
-        }
-        document.body.innerHTML = html;
-    </script>
 </html>

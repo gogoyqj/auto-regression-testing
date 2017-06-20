@@ -33,6 +33,8 @@ function runRegression(body) {
         } else {
             data.isMobile = 'isMobile' in data ? data.isMobile : body.isMobile;
             data.mode = body.mode;
+            data.gid = encodeURIComponent(cwd) + '_' + body.deploy_type;
+            data.hosts = data.hosts && data.hosts[body.deploy_type || 'beta'];
             return launcher.launch(data).then(function(res) {
                 resolve(res);
             }, function(e) {
@@ -69,7 +71,7 @@ program
                     mode: options.mode
                 }).then(function(res) {
                     var html = path.join(cwd, 'auto-regression-testing.html');
-                    fs.writeFileSync(html, fs.readFileSync(path.join(__dirname, 'tpl', 'view.html'), encoding).replace('/*screenshots*/', JSON.stringify(res)), encoding);
+                    fs.writeFileSync(html, res.html, encoding);
                 }, function(err) {
                     console.log('err', err);
                 });

@@ -11,14 +11,22 @@ help to auto regression your urls by take screenshot.
 
 ### usage
 
-#### start a server and wait for post
+#### requirements
+
++ [selenium-server-standalone](http://selenium-release.storage.googleapis.com/3.3/selenium-server-standalone-3.3.1.jar)
++ [chromedriver](https://sites.google.com/a/chromium.org/chromedriver/)
++ nodejs v6.10.0+
+
+start selenium-server-standalone first.
+
+#### start a server as remote service and wait for post
 
 start server
 
 ```
  // without a auto-regression-testing.yaml in current dir
  // start listening at port 8000
- auto-regression-testing
+ auto-regression-testing server
 ```
 
 post data
@@ -43,7 +51,7 @@ isMobile: true
 
 ```
     // with a auto-regression-testing.yaml in current dir
-    auto-regression-testing
+    auto-regression-testing start
 ```
 
 auto-regression-testing.yaml
@@ -58,4 +66,10 @@ hosts:
 urls:
  - 首页 http://aaa.com/qreactGitHub/examples/index.html
 isMobile: true
+```
+
+u can just use auto-regression-testing to start browser with specified hosts
+
+```
+auto-regression-testing start --mode=browsing
 ```

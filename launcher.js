@@ -4,9 +4,11 @@ var path = require('path');
 var webdriverio = require('webdriverio');
 var nodejsFsUtils = require('nodejs-fs-utils');
 var extDir = path.join(__dirname, 'host-switch-plus');
-var tmpDir = path.join(__dirname, 'tmp');
-var defaultModelJs = fs.readFileSync(path.join(extDir, 'js', 'background.js'), { encoding: 'utf8' });
+var tmpDir = process.env.TMPDIR;
+var encoding = { encoding: 'utf8' }
+var defaultModelJs = fs.readFileSync(path.join(extDir, 'js', 'background.js'), encoding);
 var fecha = require('fecha');
+var cwd = process.cwd();
 
 var placeHolder = '@@__@@';
 var indexToName = ['name'];
@@ -74,11 +76,10 @@ function hostFormat(hosts) {
 
 var allTmpDirs = {};
 function genDefaultOptions(options) {
-    var gid = 'hsp_' + fecha.format(Date.now(), 'YYYY-MM-DD_HH:mm:SS_s');
+    var gid = 'hsp_' + (options.gid || fecha.format(Date.now(), 'YYYY-MM-DD_HH:mm:SS_s'));
+    console.log(gid)
     var isMobile = options.isMobile;
-    var deploy_type = options.deploy_type || 'beta';
     var hosts = options.hosts;
-    hosts = hosts && hosts[deploy_type];
     var tmpExtDir = extDir;
     // inject hosts
     if ((hosts instanceof Array) && hosts.length) {
@@ -87,8 +88,8 @@ function genDefaultOptions(options) {
             err && console.log(err);
         });
         var content = defaultModelJs.replace('/*__hosts__placeholder__*/', 'results = ' + JSON.stringify(hostFormat(hosts)) + ';');
-        fs.writeFileSync(path.join(tmpExtDir, 'js', 'background.js'), content, { encoding: 'utf8' });
-        allTmpDirs[tmpExtDir] = '';
+        fs.writeFileSync(path.join(tmpExtDir, 'js', 'background.js'), content, encoding);
+        allTmpDirs[tmpExtDir] = options.mode;
     }
     var desiredCapabilities = {
         browserName: 'chrome',
@@ -96,7 +97,7 @@ function genDefaultOptions(options) {
             mobileEmulation: { 
                 "deviceName": "iPhone 6" 
             },
-            args:['load-extension=' + tmpExtDir, 'window-size=375,800']
+            args:['load-extension=' + tmpExtDir].concat(options._mode ? [] : ['window-size=375,800'])
         }
     };
     if (!isMobile) {
@@ -112,20 +113,41 @@ function genDefaultOptions(options) {
     return config;
 }
 
+
+function render(screenshots) {
+    var html = '<p>Hosts 配置</p><textarea>' + screenshots.hosts + '</textarea>';
+    screenshots = screenshots.screenshots;
+    if (screenshots instanceof Array) {
+        screenshots.forEach(function(item) {
+            html += '<div class="screenshot-item">';
+            html += '<p><a target="_blank" href="' + item.url.url + '">' + item.url.url + '</a> ' + item.url.name + '</p>';
+            html += '<img src="data:image/png;base64,' + item.screenshot.value + '"/>'
+            html += '</div>';
+        }, this);
+    } else {
+        html = '<p class="warning">no screenshots taken</p>';
+    }
+    return html;
+}
 /**
  * @description launch a browser & screenshot
  * @return webdriverio browser instance
  */
 exports.launch = function(options) {
+    options._mode = options.mode === 'browsing';
     var config = genDefaultOptions(options);
     var driver = webdriverio.remote(config.browser, 'promiseChain');
     var browser = driver.init({}).pause(500); // what **ck must pause here??
     var urls = options.urls;
+    var mode = options.mode;
     var prom = Promise.resolve();
     var response = {
         hosts: config.hosts,
         screenshots: []
     };
+    if (options._mode) {
+        return browser.url('about:blank');
+    }
     urls.forEach(function(url) {
         url = urlFormat(url);
         prom = prom.then(function() {
@@ -156,6 +178,7 @@ exports.launch = function(options) {
         return browser
             .end()
             .then(function() {
+                response.html = fs.readFileSync(path.join(__dirname, 'tpl', 'view.html'), encoding).replace('<!--html-->', render(response));
                 return response;
             });
     }, function(err) {
@@ -169,7 +192,7 @@ exports.launch = function(options) {
 
 process.on('exit', function() {
     for (var tmp in allTmpDirs) {
-        if (fs.existsSync(tmp)) {
+        if (fs.existsSync(tmp) && allTmpDirs[tmp] !== 'browsing') {
             nodejsFsUtils.rmdirsSync(tmp);
         }
     }
