@@ -10,29 +10,6 @@ var defaultModelJs = fs.readFileSync(path.join(extDir, 'js', 'background.js'), e
 var fecha = require('fecha');
 var cwd = process.cwd();
 
-var placeHolder = '@@__@@';
-var indexToName = ['name'];
-/**
- * @description make url => { url: 'http://xxxx', name: 'xxx', script: '' };
- * @param {*} url 
- */
-function urlFormat(url) {
-    var _url = url;
-    if (typeof url === 'string') {
-        _url = {};
-        url = decodeURIComponent(url);
-        url.replace(/(^|[ ])http[s]?:\/\/[^\[\]\(\) \r\n]+[ ]?/g, function(u) {
-            _url.url = u.trim();
-            return placeHolder;
-        }).split(placeHolder).forEach(function(parts, index) {
-            if (indexToName[index]) {
-                _url[indexToName[index]] = parts.trim();
-            }
-        });
-    }
-    return _url;
-}
-
 /**
  * @description 
     {
@@ -77,17 +54,17 @@ function hostFormat(hosts) {
 var allTmpDirs = {};
 function genDefaultOptions(options) {
     var gid = 'hsp_' + (options.gid || fecha.format(Date.now(), 'YYYY-MM-DD_HH:mm:SS_s'));
-    console.log(gid)
     var isMobile = options.isMobile;
     var hosts = options.hosts;
     var tmpExtDir = extDir;
+    var rewriteUrls = options.rewriteUrls;
     // inject hosts
-    if ((hosts instanceof Array) && hosts.length) {
+    if ((hosts instanceof Array) && hosts.length || rewriteUrls) {
         tmpExtDir = path.join(tmpDir, gid);
         nodejsFsUtils.copySync(extDir, tmpExtDir, function(err) {
             err && console.log(err);
         });
-        var content = defaultModelJs.replace('/*__hosts__placeholder__*/', 'results = ' + JSON.stringify(hostFormat(hosts)) + ';');
+        var content = defaultModelJs.replace('/*__hosts__placeholder__*/', 'results = ' + JSON.stringify(hostFormat(hosts)) + ';').replace('/*__ruleDomains__placeholder__*/', 'ruleDomains = ' + JSON.stringify(rewriteUrls || {}) + ';');
         fs.writeFileSync(path.join(tmpExtDir, 'js', 'background.js'), content, encoding);
         allTmpDirs[tmpExtDir] = options.mode;
     }
@@ -133,7 +110,7 @@ function render(screenshots) {
  * @description launch a browser & screenshot
  * @return webdriverio browser instance
  */
-exports.launch = function(options) {
+exports.launch = function(options, url) {
     options._mode = options.mode === 'browsing';
     var config = genDefaultOptions(options);
     var driver = webdriverio.remote(config.browser, 'promiseChain');
@@ -146,10 +123,9 @@ exports.launch = function(options) {
         screenshots: []
     };
     if (options._mode) {
-        return browser.url('about:blank');
+        return browser.url(url || 'about:blank');
     }
     urls.forEach(function(url) {
-        url = urlFormat(url);
         prom = prom.then(function() {
             return new Promise(function(resolve, reject) {
                 browser

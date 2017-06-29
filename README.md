@@ -17,6 +17,12 @@ help to auto regression your urls by take screenshot.
 + [chromedriver](https://sites.google.com/a/chromium.org/chromedriver/)
 + nodejs v6.10.0+
 
+u can use npm: [selenium-standalone@latest](https://github.com/vvo/selenium-standalone) instead:
+
+```
+npm install selenium-standalone@latest -g
+```
+
 start selenium-server-standalone first.
 
 #### start a server as remote service and wait for post
@@ -57,18 +63,52 @@ isMobile: true
 auto-regression-testing.yaml
 
 ```yaml
+aliases:
+  - &ResponseHeader
+    Access-Control-Allow-Origin: "*"
 hosts:
  beta:
   # beta
-  - 127.0.0.1 *.aaa.com,aaa.com
+  - 127.0.0.1:8099 *.aaa.com,aaa.com
  dev:
-  - 127.0.0.1 *.aaa.com,aaa.com
+  # dev
+  - 127.0.0.1 q.qunarzz.com,qunarzz.com
+rewriteUrls:
+  dev:
+    - matchUrl: http://127.0.0.1/*/src/html/*
+      rules:
+      - http://127.0.0.1/destination/productList.do* http://searchtouch.qunar.com/destination/productList.do* xxxx
+      - match: http://127.0.0.1/queryData/searchCommentList.do*
+        replace: http://searchtouch.qunar.com/queryData/searchCommentList.do*
+        title: xxxx
+      - match: http://searchtouch.qunar.com/*
+        responseRules:
+          <<: *ResponseHeader
+        requestRules:
+        # on: true
+      - http://127.0.0.1/stat.gif* http://searchtouch.qunar.com/stat.gif*
+      - http://127.0.0.1/queryData/searchSightDetail.do* http://search.qunar.com/queryData/searchSightDetail.do*
+      # on: true
+# ${var} is not valid yaml sytax
+host:
+  dev: http://127.0.0.1/intention-search-h5-hy2/src/html/
+  beta: http://127.0.0.1/intention-search-h5-hy2/src/html/
+  prod: http://127.0.0.1/intention-search-h5-hy2/src/html/
+baseUrl:
+  dev: ${host}index.html 
+  beta: ${host}index.html
+  prod: ${host}index.html
+baseUrlQreact:
+  dev: ${host}qreact.html 
+  beta: ${host}qreact.html
+  prod: ${host}qreact.html
 urls:
- - 首页 http://aaa.com/qreactGitHub/examples/index.html
+  - 首页 ${baseUrl}#place.summary?destination=上海
+  - 首页2 ${baseUrlQreact}#place.detail?destination=上海
 isMobile: true
 ```
 
-u can just use auto-regression-testing to start browser with specified hosts
+u can just use auto-regression-testing to start browser with specified hosts, in other word, u can use this tool to manage ur hosts conveniently.
 
 ```
 auto-regression-testing start --mode=browsing
