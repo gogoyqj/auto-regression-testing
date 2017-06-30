@@ -124,20 +124,24 @@ exports.launch = function(options, url) {
             if (sessionData.dev) {
                 // try to connect and reload
                 outProm = outProm.then(function() {
-                    return new Promise(function(resolve, reject) {
-                        var wdPath = "http://127.0.0.1:4444/wd/hub/session/" + sessionData.dev + '/';
-                        var timer = setTimeout(function() {
-                            reject('connect to ' + wdPath + 'time out');
-                        }, 15000);
+                    return new Promise(function(resolve) {
+                        var wdPath = "http://127.0.0.1:4444/wd/hub/session/" + sessionData.dev;
                         request
-                            .post(wdPath + "execute")
+                            .post(wdPath + "/execute")
+                            .timeout({
+                                response: 2000,
+                                deadline: 2000
+                            })
                             .send({ script: "new Image().src=\"//--auto-regression-testing.com\";location.reload()", args: [] }) // sends a JSON post body
                             .end(function(err){
                                 // 删除
                                 if (err) {
-                                    request.delete(wdPath).end();
+                                    if (err.timeout) {
+                                        console.log('[WARNING] Since the initial tab has been close，you must exit the associated chrome session manually!')
+                                    } else {
+                                        request.delete(wdPath).end();
+                                    }
                                 }
-                                clearTimeout(timer);
                                 resolve(err ? null : 'share last create session');
                             });
                     })
