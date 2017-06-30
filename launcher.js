@@ -9,7 +9,8 @@ var encoding = { encoding: 'utf8' }
 var defaultModelJs = fs.readFileSync(path.join(extDir, 'js', 'background.js'), encoding);
 var fecha = require('fecha');
 var cwd = process.cwd();
-
+var yaml = require('js-yaml');
+var request = require('superagent');
 /**
  * @description 
     {
@@ -106,6 +107,7 @@ function render(screenshots) {
     }
     return html;
 }
+
 /**
  * @description launch a browser & screenshot
  * @return webdriverio browser instance
@@ -113,56 +115,97 @@ function render(screenshots) {
 exports.launch = function(options, url) {
     options._mode = options.mode === 'browsing';
     var config = genDefaultOptions(options);
-    var driver = webdriverio.remote(config.browser, 'promiseChain');
-    var browser = driver.init({}).pause(500); // what **ck must pause here??
-    var urls = options.urls;
-    var mode = options.mode;
-    var prom = Promise.resolve();
-    var response = {
-        hosts: config.hosts,
-        screenshots: []
-    };
+    var outProm = Promise.resolve();
+    var sessionInfo = path.resolve(cwd, '.auto-session.yaml');
     if (options._mode) {
-        return browser.url(url || 'about:blank');
-    }
-    urls.forEach(function(url) {
-        prom = prom.then(function() {
-            return new Promise(function(resolve, reject) {
-                browser
-                    .url(url.url)
-                    .pause(1000)
-                    .screenshot()
-                    .then(function(base64) {
-                        response.screenshots.push({
-                            url: url,
-                            screenshot: base64
-                        });
-                        resolve();
-                    }, reject);
-            });
-        });
-    });
-    function clear() {
-        console.log('close browser');
-        if (config.tmpExtDir) {
-            nodejsFsUtils.rmdirsSync(config.tmpExtDir);
-            delete allTmpDirs[config.tmpExtDir];
+        if (fs.existsSync(sessionInfo)) {
+            var sessionData =  yaml.safeLoad(fs.readFileSync(sessionInfo, encoding));
+            url = url || 'about:blank';
+            if (sessionData.dev) {
+                // try to connect and reload
+                outProm = outProm.then(function() {
+                    return new Promise(function(resolve, reject) {
+                        var wdPath = "http://127.0.0.1:4444/wd/hub/session/" + sessionData.dev + '/';
+                        var timer = setTimeout(function() {
+                            reject('connect to ' + wdPath + 'time out');
+                        }, 15000);
+                        request
+                            .post(wdPath + "execute")
+                            .send({ script: "new Image().src=\"//--auto-regression-testing.com\";location.reload()", args: [] }) // sends a JSON post body
+                            .end(function(err){
+                                // 删除
+                                if (err) {
+                                    request.delete(wdPath).end();
+                                }
+                                clearTimeout(timer);
+                                resolve(err ? null : 'share last create session');
+                            });
+                    })
+                })
+            }
         }
     }
-    prom = prom.then(function() {
-        clear();
-        return browser
-            .end()
-            .then(function() {
-                response.html = fs.readFileSync(path.join(__dirname, 'tpl', 'view.html'), encoding).replace('<!--html-->', render(response));
-                return response;
+    outProm.then(function(shallReturn) {
+        if (shallReturn) return;
+        var prom = Promise.resolve();
+        var driver = webdriverio.remote(config.browser, 'promiseChain');
+        var browser = driver.init({}).pause(500); // what **ck must pause here??
+        var urls = options.urls;
+        // var mode = options.mode;
+        var response = {
+            hosts: config.hosts,
+            screenshots: []
+        };
+        if (options._mode) {
+            return browser.url(url).then(function(session) {
+                if (session && session.state === 'success') {
+                    var sessionId = session.sessionId;
+                    fs.writeFileSync(sessionInfo, 'dev: ' + sessionId, encoding);
+                } else {
+                    return Promise.reject('start browser failed');
+                }
             });
-    }, function(err) {
-        console.log('err', err);
-        browser.end();
-        clear();
-    });
-    return prom;
+        }
+        urls.forEach(function(url) {
+            prom = prom.then(function() {
+                return new Promise(function(resolve, reject) {
+                    browser
+                        .url(url.url)
+                        .pause(1000)
+                        .screenshot()
+                        .then(function(base64) {
+                            response.screenshots.push({
+                                url: url,
+                                screenshot: base64
+                            });
+                            resolve();
+                        }, reject);
+                });
+            });
+        });
+        function clear() {
+            console.log('close browser');
+            if (config.tmpExtDir) {
+                nodejsFsUtils.rmdirsSync(config.tmpExtDir);
+                delete allTmpDirs[config.tmpExtDir];
+            }
+        }
+        prom = prom.then(function() {
+            clear();
+            return browser
+                .end()
+                .then(function() {
+                    
+                    response.html = fs.readFileSync(path.join(__dirname, 'tpl', 'view.html'), encoding).replace('<!--html-->', render(response));
+                    return response;
+                });
+        }, function(err) {
+            console.log('err', err);
+            browser.end();
+            clear();
+        });
+    })
+    return outProm;
 }
 
 

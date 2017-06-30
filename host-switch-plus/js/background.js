@@ -267,6 +267,10 @@ chrome.proxy.settings.set({
     };
 
     var handleRequest = function(requestUrl, tabUrl, tabId) {
+        // hack to reload ext
+        if (requestUrl.indexOf('--auto-regression-testing.com') !== -1) {
+            return location.reload();
+        }
         for (var key in ruleDomains) {
             var domainObj = ruleDomains[key];
             if (domainObj.on && match(domainObj.matchUrl, tabUrl).matched) {

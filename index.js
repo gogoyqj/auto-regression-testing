@@ -65,6 +65,16 @@ function formatRewriteUrls(rules) {
                     if (rule.on !== false) rule.on = true;
                     if (('requestRules' in rule) || ('responseRules' in rule)) {
                         rule.type = 'headerRule';
+                        ['requestRules', 'responseRules'].forEach(function(key) {
+                            var val = rule[key];
+                            var str = [];
+                            if (val) {
+                                for (var r in val) {
+                                    str.push('set ' + r + ': ' + val[r]);
+                                }
+                            }
+                            rule[key] = str.join(';');
+                        });
                     } else {
                         rule.type = 'normalOverride';
                     }
@@ -175,6 +185,8 @@ program
     .option('-d,--deploy_type [value]', 'specify deploy_type, can be: dev, beta or prod, determines which hosts to be used, default is: dev', 'dev')
     .option('-m,--mode [value]', 'specify mode, if mode === browsing, just start the browser, default is: testing', 'testing')
     .option('-u, --url [value]', 'specify a url to open if mode === browsing', false)
+    // .option('-p, --port [value]', 'specify the port which selenium standalone listens at, default is: 4444', 4444)
+    // .option('-H, --hostname [value]', 'specify the hostname which selenium standalone uses, default is:127.0.0.1', '127.0.0.1')
     .action(function(options) {
         // if there is auto-regression-testing.yaml file, must be dev
         var ifYAML = path.join(cwd, options.yaml);
@@ -188,8 +200,10 @@ program
                     mode: options.mode,
                     url: options.url
                 }).then(function(res) {
-                    var html = path.join(cwd, 'auto-regression-testing.html');
-                    fs.writeFileSync(html, res.html, encoding);
+                    if (res && res.html) {
+                        var html = path.join(cwd, 'auto-regression-testing.html');
+                        fs.writeFileSync(html, res.html, encoding);
+                    }
                 }, function(err) {
                     console.log('err', err);
                 });
@@ -222,3 +236,6 @@ program
         app.listen(port);
     });
 program.parse(process.argv);
+process.on('unhandledRejection', (reason, p) => {
+  console.log('Unhandled Rejection at:', p, 'reason:', reason);
+});
